@@ -1,0 +1,26 @@
+# Build artifacts
+.pio/
+.pioenvs/
+.piolibdeps/
+*.bin
+*.elf
+*.map
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets / generated credentials
+.env
+include/credentials.h
+keys/private.pem
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

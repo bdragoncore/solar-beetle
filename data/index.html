@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar Beetle</title>
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .battery-card {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 1.25rem;
+    }
+    .battery-card .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+    .battery-card .sub {
+      font-size: 0.85rem;
+    }
+    .battery-icon {
+      display: block;
+      margin: 0.25rem 0;
+    }
+    .metric {
+      background: #16213e;
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .metric .label {
+      display: block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: #888;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.15rem;
+    }
+    .metric .value {
+      display: block;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .metric .sub {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .reading { color: #555; font-style: italic; font-size: 0.9rem; grid-column: 1 / -1; text-align: center; padding: 2rem 0; }
+    .btn-sm {
+      background: #1a1a2e;
+      color: #888;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .btn-sm.active {
+      background: #4ade80;
+      color: #000;
+      border-color: #4ade80;
+      font-weight: 600;
+    }
+    .footer { grid-column: 1 / -1; text-align: center; font-size: 0.75rem; color: #555; margin-top: 0.5rem; }
+    .footer a { color: #4ade80; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Solar Beetle</h1>
+  <div class="status-grid"
+       hx-get="/status"
+       hx-trigger="load, every 10s"
+       hx-swap="innerHTML">
+    <div class="reading">Reading sensors…</div>
+  </div>
+  <div class="footer"><a href="/update">Firmware Update</a></div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - firebeetle2-esp32e
+          - ota
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Create dummy .env
+        # load_env.py needs .env to exist; values are placeholders for a build-only run.
+        run: cp .env.sample .env
+
+      - name: Build firmware (${{ matrix.environment }})
+        run: pio run -e ${{ matrix.environment }}
+
+      - name: Build filesystem (${{ matrix.environment }})
+        run: pio run -e ${{ matrix.environment }} --target buildfs
