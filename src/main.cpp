@@ -77,6 +77,7 @@ unsigned long lastVoltTrendCheck = 0;
 bool isCharging = false;
 float chargeRefVoltage = -1.0f;
 unsigned long lastChargeCheck = 0;
+float voltageRate = 0.0f;
 
 enum PowerMode { POWER_HIGH, POWER_LOW };
 PowerMode currentPowerMode = POWER_HIGH;
@@ -133,12 +134,14 @@ void calcSunriseSunset(int doy, double lat, double lon, double tz, double &rise,
 
 void detectCharging() {
   unsigned long now = millis();
-  if (now - lastChargeCheck < 30000) return;
-  lastChargeCheck = now;
+  unsigned long dt = now - lastChargeCheck;
+  if (dt < 30000) return;
   float v = batteryVoltage();
   if (chargeRefVoltage > 0) {
     isCharging = v > chargeRefVoltage + 0.01f;
+    voltageRate = (v - chargeRefVoltage) / (dt / 3600000.0f);
   }
+  lastChargeCheck = now;
   chargeRefVoltage = v;
 }
 
@@ -263,7 +266,7 @@ String batteryHtml() {
     "</svg>"
     "<span class=\"value\">" + String(v, 2) + " V</span>"
     "<span class=\"sub\">" + String(pct) + "% (" + chargeLabel + ")</span>"
-    "<span class=\"sub\" style=\"color:#4ade80;font-size:0.6rem\">" + String(isCharging ? "⚡ USB" : (v > 4.05f ? "USB connected" : "")) + "</span>"
+    "<span class=\"sub\" style=\"color:#4ade80;font-size:0.6rem\">" + String(isCharging ? "⚡ USB" : (v > 4.05f ? "USB connected" : "")) + " " + String(voltageRate > 0 ? "+" : "") + String(voltageRate, 2) + " V/h</span>"
     "</div>";
 }
 
@@ -316,6 +319,7 @@ void handleStatusJson() {
                 ",\"percent\":" + String(batteryPercent(v)) +
                 ",\"charged\":" + String(v > 4.05f ? "true" : "false") +
                 ",\"charging\":" + String(isCharging ? "true" : "false") +
+                ",\"rate\":" + String(voltageRate, 2) +
                 "},\"light\":{\"mode\":\"" + modeStr + "\",\"state\":" + String(lightState ? "true" : "false") + ",\"powerSaving\":" + String(powerSaving ? "true" : "false") + ",\"cloudy\":" + String(cloudy ? "true" : "false") + "}" +
                 ",\"system\":{\"cpu\":" + String(ESP.getCpuFreqMHz()) +
                 ",\"freeHeap\":" + String(ESP.getFreeHeap()) +
