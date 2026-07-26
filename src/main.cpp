@@ -74,6 +74,10 @@ float cloudVoltageRef = -1.0f;
 int lastCloudCheckDay = -1;
 unsigned long lastVoltTrendCheck = 0;
 
+bool isCharging = false;
+float chargeRefVoltage = -1.0f;
+unsigned long lastChargeCheck = 0;
+
 enum PowerMode { POWER_HIGH, POWER_LOW };
 PowerMode currentPowerMode = POWER_HIGH;
 unsigned long lastPowerModeCheck = 0;
@@ -125,6 +129,25 @@ void calcSunriseSunset(int doy, double lat, double lon, double tz, double &rise,
   double noon = 720 - 4 * lon - eot;
   rise = (noon - 4 * ha) / 60.0 + tz;
   set = (noon + 4 * ha) / 60.0 + tz;
+}
+
+void detectCharging() {
+  unsigned long now = millis();
+  if (now - lastChargeCheck < 30000) return;
+  lastChargeCheck = now;
+  float v = batteryVoltage();
+  if (v > 4.05f) {
+    if (chargeRefVoltage > 0 && v > chargeRefVoltage + 0.015f) {
+      isCharging = true;
+    } else if (v >= 4.18f) {
+      isCharging = false;
+    } else if (chargeRefVoltage < 0) {
+      isCharging = true;
+    }
+  } else {
+    isCharging = false;
+  }
+  chargeRefVoltage = v;
 }
 
 void updateLight() {
@@ -218,14 +241,23 @@ void handleLightPost() {
 String batteryHtml() {
   float v = batteryVoltage();
   int pct = batteryPercent(v);
-  String label = "Full";
-  if (v < 3.30) label = "Critical";
-  else if (v < 3.70) label = "Low";
-  else if (v < 4.1f) label = "Normal";
   String color = v < 3.40 ? "#f87171" : (v < 3.70 ? "#fbbf24" : (v > 4.05f ? "#4ade80" : "#fbbf24"));
-  bool charged = v > 4.05f;
-  String chargeIcon = charged ? "<svg class=\"bolt\" viewBox=\"0 0 12 20\" width=\"16\" height=\"26\"><path d=\"M7 0L0 11h4.5L3 20l8-11H6.5L9 0z\" fill=\"#4ade80\"/></svg>" : "";
-  String chargeLabel = charged ? "Charged" : (v >= 3.70 ? "Nominal" : (v >= 3.30 ? "Low" : "Critical"));
+  bool charged = v > 4.05f && !isCharging;
+  String chargeIcon;
+  String chargeLabel;
+  String fillAnim;
+  if (isCharging) {
+    chargeIcon = "<svg class=\"bolt\" viewBox=\"0 0 12 20\" width=\"16\" height=\"26\"><path d=\"M7 0L0 11h4.5L3 20l8-11H6.5L9 0z\" fill=\"#4ade80\"/></svg>";
+    chargeLabel = "Charging";
+    fillAnim = "<animate attributeName=\"opacity\" values=\"0.4;1;0.4\" dur=\"0.8s\" repeatCount=\"indefinite\"/>";
+  } else if (charged) {
+    chargeIcon = "<svg class=\"bolt\" viewBox=\"0 0 12 20\" width=\"16\" height=\"26\"><path d=\"M7 0L0 11h4.5L3 20l8-11H6.5L9 0z\" fill=\"#4ade80\"/></svg>";
+    chargeLabel = "Charged";
+    fillAnim = "<animate attributeName=\"opacity\" values=\"0.7;1;0.7\" dur=\"2s\" repeatCount=\"indefinite\"/>";
+  } else {
+    chargeLabel = v >= 3.70 ? "Nominal" : (v >= 3.30 ? "Low" : "Critical");
+    fillAnim = "<animate attributeName=\"opacity\" values=\"0.7;1;0.7\" dur=\"2s\" repeatCount=\"indefinite\"/>";
+  }
 
   int fill = (32 * pct) / 100;
   return "<div class=\"metric battery-card\">"
@@ -234,11 +266,12 @@ String batteryHtml() {
     "<rect x=\"2\" y=\"3\" width=\"36\" height=\"18\" rx=\"3\" fill=\"none\" stroke=\"" + color + "\" stroke-width=\"1.5\"/>"
     "<rect x=\"38\" y=\"8\" width=\"4\" height=\"8\" rx=\"1\" fill=\"" + color + "\"/>"
     "<rect x=\"6\" y=\"6\" width=\"" + String(fill) + "\" height=\"12\" rx=\"1.5\" fill=\"" + color + "\">"
-    "<animate attributeName=\"opacity\" values=\"0.7;1;0.7\" dur=\"2s\" repeatCount=\"indefinite\"/>"
+    + fillAnim +
     "</rect>"
     "</svg>"
     "<span class=\"value\">" + String(v, 2) + " V</span>"
     "<span class=\"sub\">" + String(pct) + "% (" + chargeLabel + ")</span>"
+    "<span class=\"sub\" style=\"color:#4ade80;font-size:0.6rem\">" + String(isCharging ? "⚡ USB" : (v > 4.05f ? "USB connected" : "")) + "</span>"
     "</div>";
 }
 
@@ -290,6 +323,7 @@ void handleStatusJson() {
   String json = "{\"battery\":{\"voltage\":" + String(v, 2) +
                 ",\"percent\":" + String(batteryPercent(v)) +
                 ",\"charged\":" + String(v > 4.05f ? "true" : "false") +
+                ",\"charging\":" + String(isCharging ? "true" : "false") +
                 "},\"light\":{\"mode\":\"" + modeStr + "\",\"state\":" + String(lightState ? "true" : "false") + ",\"powerSaving\":" + String(powerSaving ? "true" : "false") + ",\"cloudy\":" + String(cloudy ? "true" : "false") + "}" +
                 ",\"system\":{\"cpu\":" + String(ESP.getCpuFreqMHz()) +
                 ",\"freeHeap\":" + String(ESP.getFreeHeap()) +
@@ -506,4 +540,5 @@ void loop() {
   server.handleClient();
   updateLeds();
   updateLight();
+  detectCharging();
 }

@@ -29,7 +29,7 @@ The onboard charger IC (TP4054) outputs voltage on the battery rail whenever USB
 
 ## Dashboard
 - HTML at `/`, HTMX polls `/status` every 10 s
-- JSON at `/api/status` fields: `battery.voltage`, `battery.percent`, `battery.charged`, `light.mode`, `light.state`, `system.cpu`, `system.freeHeap`, `system.temp`, `system.rssi`, `system.uptime`, `firmware.hash`
+- JSON at `/api/status` fields: `battery.voltage`, `battery.percent`, `battery.charged`, `battery.charging`, `light.mode`, `light.state`, `system.cpu`, `system.freeHeap`, `system.temp`, `system.rssi`, `system.uptime`, `firmware.hash`
 - Battery SVG icon with animated fill, color-coded (green/yellow/red), bolt icon when charged
 - Dashboard shows "Unplug at 80% for best life" hint when charged
 - String light card with On/Off/Auto buttons, active button highlighted green
