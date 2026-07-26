@@ -124,3 +124,5 @@ pio run --target uploadfs                    # flash SPIFFS (HTML) via USB
 | `MDNS_HOSTNAME` | No | `solar` |
 | `LAT` | Yes | `42.19` |
 | `LON` | Yes | `-71.76` |
+| `TZ` | No | `EST5EDT,M3.2.0,M11.1.0` |
+| `LIGHTS_OFF_TIME` | No | `1.0` |

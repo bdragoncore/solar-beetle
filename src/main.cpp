@@ -36,6 +36,12 @@
 #ifndef LON
 #error "LON not defined. Add LAT and LON to .env"
 #endif
+#ifndef TZ
+#define TZ "EST5EDT,M3.2.0,M11.1.0"
+#endif
+#ifndef LIGHTS_OFF_TIME
+#define LIGHTS_OFF_TIME "1.0"
+#endif
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
@@ -57,6 +63,7 @@ LightMode lightMode = LIGHT_AUTO;
 bool lightState = false;
 double sunriseTime = 6.0;
 double sunsetTime = 18.0;
+double lightsOffTime = atof(LIGHTS_OFF_TIME);
 unsigned long lastSunCalc = 0;
 
 const float LOW_BAT_THRESHOLD = 3.40f;
@@ -158,6 +165,11 @@ void updateLight() {
       cloudy = cloudVoltageRef < 4.05f && (v - cloudVoltageRef) < 0.05f;
       lastVoltTrendCheck = now;
     }
+    digitalWrite(LIGHT_PIN, LOW); lightState = false; powerSaving = false;
+    return;
+  }
+
+  if (isNight && cur >= lightsOffTime && cur < sunriseTime) {
     digitalWrite(LIGHT_PIN, LOW); lightState = false; powerSaving = false;
     return;
   }
@@ -420,7 +432,7 @@ void setup() {
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
 
-  configTzTime("EST5EDT,M3.2.0,M11.1.0", "pool.ntp.org");
+  configTzTime(TZ, "pool.ntp.org");
   Serial.println("NTP sync started");
 
   if (MDNS.begin(MDNS_HOSTNAME)) {
