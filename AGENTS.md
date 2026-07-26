@@ -62,6 +62,20 @@ The onboard charger IC (TP4054) outputs voltage on the battery rail whenever USB
 - **Web upload** at `/update`: GET shows form, POST receives .bin and flashes inactive slot
 - Rollback: `esp_ota_mark_app_valid_cancel_rollback()` called on every boot to confirm firmware is good
 
+### Firewall Note
+The host firewall blocks the ESP32's TCP callback connection after ArduinoOTA authentication. If OTA fails with "Authenticating...OK" then "No response from device", add a firewall exception:
+```bash
+pkexec firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.224" accept'
+pkexec firewall-cmd --reload
+```
+
+### mDNS Note
+`solar.local` may not resolve in this environment. Use the IP directly:
+```bash
+pio run --environment ota --target upload --upload-port 192.168.1.224
+pio run --environment ota --target uploadfs --upload-port 192.168.1.224
+```
+
 ## Power Conservation (board-wide)
 When battery voltage drops, the board reduces its own draw to stay alive longer:
 - **Bluetooth disabled at boot** — saves ~10 mA (BT never used)
