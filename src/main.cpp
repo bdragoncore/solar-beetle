@@ -136,16 +136,8 @@ void detectCharging() {
   if (now - lastChargeCheck < 30000) return;
   lastChargeCheck = now;
   float v = batteryVoltage();
-  if (v > 4.05f) {
-    if (chargeRefVoltage > 0 && v > chargeRefVoltage + 0.015f) {
-      isCharging = true;
-    } else if (v >= 4.18f) {
-      isCharging = false;
-    } else if (chargeRefVoltage < 0) {
-      isCharging = true;
-    }
-  } else {
-    isCharging = false;
+  if (chargeRefVoltage > 0) {
+    isCharging = v > chargeRefVoltage + 0.01f;
   }
   chargeRefVoltage = v;
 }
