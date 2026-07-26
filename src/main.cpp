@@ -155,14 +155,14 @@ void updateLight() {
   if (!isNight) {
     if (cloudVoltageRef < 0.0f) cloudVoltageRef = v;
     if (now - lastVoltTrendCheck > 600000) {
-      cloudy = (v - cloudVoltageRef) < 0.05f;
+      cloudy = cloudVoltageRef < 4.05f && (v - cloudVoltageRef) < 0.05f;
       lastVoltTrendCheck = now;
     }
     digitalWrite(LIGHT_PIN, LOW); lightState = false; powerSaving = false;
     return;
   }
 
-  if (v < LOW_BAT_THRESHOLD || cloudy) {
+  if (v < LOW_BAT_THRESHOLD || (cloudy && v < 4.05f)) {
     digitalWrite(LIGHT_PIN, LOW); lightState = false; powerSaving = true;
     return;
   }
