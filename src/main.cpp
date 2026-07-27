@@ -78,6 +78,9 @@ bool isCharging = false;
 float chargeRefVoltage = -1.0f;
 unsigned long lastChargeCheck = 0;
 float voltageRate = 0.0f;
+const unsigned long CHARGE_INTERVAL = 300000;
+const float CHARGE_RISE_THRESH = 0.03f;
+const float CHARGE_DROP_THRESH = -0.01f;
 
 enum PowerMode { POWER_HIGH, POWER_LOW };
 PowerMode currentPowerMode = POWER_HIGH;
@@ -135,11 +138,15 @@ void calcSunriseSunset(int doy, double lat, double lon, double tz, double &rise,
 void detectCharging() {
   unsigned long now = millis();
   unsigned long dt = now - lastChargeCheck;
-  if (dt < 30000) return;
+  if (dt < CHARGE_INTERVAL) return;
   float v = batteryVoltage();
   if (chargeRefVoltage > 0) {
-    isCharging = v > chargeRefVoltage + 0.01f;
-    voltageRate = (v - chargeRefVoltage) / (dt / 3600000.0f);
+    float change = v - chargeRefVoltage;
+    voltageRate = change / (dt / 3600000.0f);
+    if (change > CHARGE_RISE_THRESH)
+      isCharging = true;
+    else if (change < CHARGE_DROP_THRESH)
+      isCharging = false;
   }
   lastChargeCheck = now;
   chargeRefVoltage = v;
@@ -200,6 +207,47 @@ void updateLight() {
   digitalWrite(LIGHT_PIN, HIGH); lightState = true; powerSaving = false;
 }
 
+String pieSector(double h1, double h2, double r, const char *color) {
+  if (h2 - h1 < 0.001) return "";
+  double a1 = (h1 / 24.0) * 2.0 * PI - PI / 2.0;
+  double a2 = (h2 / 24.0) * 2.0 * PI - PI / 2.0;
+  double x1 = 50.0 + r * cos(a1), y1 = 50.0 + r * sin(a1);
+  double x2 = 50.0 + r * cos(a2), y2 = 50.0 + r * sin(a2);
+  int large = ((h2 - h1) / 24.0 * 360.0) > 180 ? 1 : 0;
+  return "<path d=\"M 50 50 L " + String(x1, 1) + " " + String(y1, 1)
+    + " A " + String(r, 1) + " " + String(r, 1) + " 0 " + large + " 1 "
+    + String(x2, 1) + " " + String(y2, 1)
+    + " Z\" fill=\"" + color + "\" stroke=\"none\"/>";
+}
+
+String lightDialSVG() {
+  time_t now = time(nullptr);
+  if (now < 100000) return "";
+  struct tm *tm = localtime(&now);
+  double cur = tm->tm_hour + tm->tm_min / 60.0 + tm->tm_sec / 3600.0;
+  const double r = 42;
+  const char *onColor = "#4ade80";
+  const char *offColor = "#374151";
+
+  String s;
+  s += "<circle cx=\"50\" cy=\"50\" r=\"" + String(r, 1) + "\" fill=\"" + offColor + "\" stroke=\"#4b5563\" stroke-width=\"1.5\"/>";
+  s += "<g transform=\"rotate(" + String(-(cur / 24.0) * 360.0, 1) + " 50 50)\">";
+
+  double onStart = sunsetTime;
+  double onEnd = lightsOffTime;
+  if (onEnd > onStart) {
+    s += pieSector(onStart, onEnd, r, onColor);
+  } else {
+    s += pieSector(onStart, 24.0, r, onColor);
+    s += pieSector(0.0, onEnd, r, onColor);
+  }
+
+  s += "</g>";
+  s += "<polygon points=\"50,4 46,13 54,13\" fill=\"white\"/>";
+
+  return "<svg viewBox=\"0 0 100 100\" width=\"100\" height=\"100\" style=\"margin:4px auto;display:block\">" + s + "</svg>";
+}
+
 String lightHtml() {
   String modeStr = lightMode == LIGHT_AUTO ? "auto" : (lightMode == LIGHT_ON ? "on" : "off");
   String stateLabel = lightState ? "On" : "Off";
@@ -210,9 +258,18 @@ String lightHtml() {
     note = "<span class=\"sub\" style=\"color:#f87171;font-size:0.65rem\">"
       + String(cloudy ? "Cloudy — conserving" : "Battery low — conserving") + "</span>";
   }
+  String dial = "";
+  String schedule = "";
+  if (lightMode == LIGHT_AUTO) {
+    dial = lightDialSVG();
+    schedule = "<span class=\"sub\" style=\"font-size:0.65rem\">"
+      + sunsetStr + " — " + String((int)lightsOffTime) + ":00"
+      + "</span>";
+  }
   return "<div class=\"metric\" id=\"light-control\">"
     "<span class=\"label\">String Lights</span>"
     "<span class=\"value\">" + stateLabel + "</span>"
+    + schedule + dial +
     "<div class=\"sub\">"
     "<button class=\"btn-sm" + String(lightMode == LIGHT_ON ? " active" : "") + "\" hx-post=\"/api/light\" hx-vals='{\"mode\":\"on\"}' hx-target=\"#light-control\" hx-swap=\"outerHTML\">On</button> "
     "<button class=\"btn-sm" + String(lightMode == LIGHT_OFF ? " active" : "") + "\" hx-post=\"/api/light\" hx-vals='{\"mode\":\"off\"}' hx-target=\"#light-control\" hx-swap=\"outerHTML\">Off</button> "
